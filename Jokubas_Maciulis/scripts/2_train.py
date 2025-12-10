@@ -2,9 +2,8 @@ import pandas as pd
 import numpy as np
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import StandardScaler
-from sklearn.utils import class_weight
 import tensorflow as tf
-from plot_training import plot_training_history, plot_auc
+from src.plot_training import plot_training_history, plot_auc
 
 df = pd.read_csv("data/processed/electron_dataset.csv")
 
@@ -41,13 +40,34 @@ model.compile(
     metrics=["accuracy", tf.keras.metrics.AUC(name="auc")]
 )
 
-class_weights = class_weight.compute_class_weight(
-    class_weight='balanced',
-    classes=np.unique(y_train),
-    y=y_train
-)
-
-class_weights_dict = dict(enumerate(class_weights))
+##############################################################
+# Handling class imbalance (optional for balanced datasets) #
+##############################################################
+#
+# If the number of signal events and background events is very different,
+# the model might become biased toward the majority class. 
+#
+# To address this, you can compute class weights which give more 
+# importance to the minority class during training:
+#
+# from sklearn.utils import class_weight
+# class_weights = class_weight.compute_class_weight(
+#     class_weight='balanced',
+#     classes=np.unique(y_train),
+#     y=y_train
+# )
+# class_weights_dict = dict(enumerate(class_weights))
+#
+# Then, pass these weights to model.fit:
+#
+# model.fit(
+#     X_train, 
+#     y_train, 
+#     epochs=30, 
+#     batch_size=128, 
+#     validation_split=0.2, 
+#     class_weight=class_weights_dict
+# )
 
 history = model.fit(
     X_train,
@@ -55,9 +75,10 @@ history = model.fit(
     epochs=30,
     batch_size=128,
     validation_split=0.2,
-    verbose = 2,
-    class_weight=class_weights_dict
+    verbose = 2
 )
+
+model.save("results/electron_classifier.h5")
 
 plot_training_history(history, save_path="results/training_plot.png")
 
